@@ -2,38 +2,36 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sextant FX Institutional v3</title>
 
 <style>
 body {
   margin: 0;
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: #0b0f14;
-  color: white;
+  color: #fff;
 }
 
-/* TOP BAR */
 .topbar {
   position: fixed;
   top: 0;
   width: 100%;
   background: #0f1622;
-  padding: 10px 20px;
   border-bottom: 1px solid #222;
+  padding: 12px;
   display: flex;
-  justify-content: space-between;
-  font-size: 14px;
+  justify-content: space-around;
+  box-sizing: border-box;
 }
 
-/* GRID */
 .container {
+  padding: 80px 15px 60px 15px;
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 15px;
-  padding: 70px 15px 15px 15px;
 }
 
-/* PANELS */
 .panel {
   background: #111823;
   border: 1px solid #333;
@@ -41,78 +39,64 @@ body {
   padding: 15px;
 }
 
-/* ZONES */
-.zoneA { color: #00ff99; font-size: 22px; }
-.zoneB { color: #ffd166; font-size: 22px; }
-.zoneC { color: #ff8c42; font-size: 22px; }
-.zoneD { color: #ff4d4d; font-size: 22px; }
+.zoneA { color: #00ff99; }
+.zoneB { color: #ffd166; }
+.zoneC { color: #ff8c42; }
+.zoneD { color: #ff4d4d; }
 
 .big {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: bold;
-  margin-top: 10px;
 }
 
-.small {
-  color: #aaa;
-  font-size: 12px;
-}
-
-/* ALERT BAR */
 .alertbar {
   position: fixed;
   bottom: 0;
   width: 100%;
   background: #0f1622;
   border-top: 1px solid #222;
-  padding: 8px;
-  font-size: 13px;
-  color: #ffd166;
+  padding: 10px;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 input {
-  width: 120px;
-  padding: 5px;
+  width: 100px;
+  padding: 6px;
+  margin: 4px;
 }
+
 button {
-  padding: 6px 10px;
-  cursor: pointer;
+  padding: 6px 12px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- TOP BAR -->
 <div class="topbar">
   <div id="rate">SGD/IDR: Loading...</div>
   <div id="zone">Zone: --</div>
   <div>TRUST MODE: ACTIVE</div>
 </div>
 
-<!-- MAIN GRID -->
 <div class="container">
 
-  <!-- DECISION ENGINE -->
   <div class="panel">
     <h2>DECISION ENGINE</h2>
-    <div id="action" class="big">--</div>
-    <div class="small">Primary FX instruction</div>
+    <div id="action" class="big">Loading...</div>
   </div>
 
-  <!-- PORTFOLIO -->
   <div class="panel">
     <h2>PORTFOLIO (CHRISTINE TRUST)</h2>
-    <div id="portfolio">Loading...</div>
+    <div id="portfolio"></div>
   </div>
 
-  <!-- LADDER -->
   <div class="panel">
     <h2>LADDER STRATEGY</h2>
     <div id="ladder"></div>
   </div>
 
-  <!-- CONTROLS -->
   <div class="panel">
     <h2>ALLOCATION CONTROL</h2>
     <input id="sgdHeld" placeholder="SGD %" />
@@ -122,14 +106,12 @@ button {
 
 </div>
 
-<!-- ALERT BAR -->
-<div class="alertbar" id="alert">
+<div id="alert" class="alertbar">
 SYSTEM READY
 </div>
 
 <script>
 
-// ---------------- ZONES ----------------
 const zones = [
   { name: "A", min: 13800, max: 14200, action: "HOLD / SMALL CONVERT 10%" },
   { name: "B", min: 14200, max: 14600, action: "CONVERT 10–20%" },
@@ -137,7 +119,6 @@ const zones = [
   { name: "D", min: 15000, max: 999999, action: "EXIT REMAINING POSITION" }
 ];
 
-// ---------------- PORTFOLIO ----------------
 let portfolio = JSON.parse(localStorage.getItem("fxPortfolio")) || {
   sgd: 70,
   idr: 30
@@ -145,12 +126,12 @@ let portfolio = JSON.parse(localStorage.getItem("fxPortfolio")) || {
 
 function renderPortfolio() {
   document.getElementById("portfolio").innerHTML =
-    `SGD: ${portfolio.sgd}%<br>IDR: ${portfolio.idr}%`;
+    "SGD: " + portfolio.sgd + "%<br>IDR: " + portfolio.idr + "%";
 }
 
 function updatePortfolio() {
-  let sgd = parseFloat(document.getElementById("sgdHeld").value);
-  let idr = parseFloat(document.getElementById("idrHeld").value);
+  const sgd = parseFloat(document.getElementById("sgdHeld").value);
+  const idr = parseFloat(document.getElementById("idrHeld").value);
 
   if (!isNaN(sgd)) portfolio.sgd = sgd;
   if (!isNaN(idr)) portfolio.idr = idr;
@@ -159,40 +140,58 @@ function updatePortfolio() {
   renderPortfolio();
 }
 
-// ---------------- FETCH RATE ----------------
 async function fetchRate() {
   try {
-    const res = await fetch("https://api.exchangerate.host/latest?base=SGD&symbols=IDR");
+
+    const res = await fetch("https://open.er-api.com/v6/latest/SGD");
     const data = await res.json();
 
     const rate = data.rates.IDR;
-    document.getElementById("rate").innerText = "SGD/IDR: " + rate.toFixed(2);
+
+    document.getElementById("rate").innerText =
+      "SGD/IDR: " + rate.toFixed(2);
 
     evaluate(rate);
     updateLadder(rate);
 
-  } catch (e) {
-    document.getElementById("rate").innerText = "Rate Error";
+  } catch (err) {
+
+    document.getElementById("rate").innerText =
+      "SGD/IDR: Feed Error";
+
+    document.getElementById("action").innerText =
+      "Awaiting Data";
+
+    console.log(err);
   }
 }
 
-// ---------------- ZONE ENGINE ----------------
 function evaluate(rate) {
-  let z = zones.find(x => rate >= x.min && rate < x.max);
 
-  document.getElementById("zone").innerText = "Zone " + z.name;
-  document.getElementById("action").innerText = z.action;
-  document.getElementById("zone").className = "zone" + z.name;
+  const z = zones.find(
+    item => rate >= item.min && rate < item.max
+  );
+
+  if (!z) return;
+
+  document.getElementById("zone").innerText =
+    "Zone " + z.name;
+
+  document.getElementById("zone").className =
+    "zone" + z.name;
+
+  document.getElementById("action").innerText =
+    z.action;
 
   document.getElementById("alert").innerText =
     (z.name === "C" || z.name === "D")
-    ? "⚠ HIGH FX ZONE — GRADUAL CONVERSION ADVISED"
+    ? "HIGH FX ZONE ACTIVE"
     : "SYSTEM STABLE";
 }
 
-// ---------------- LADDER ----------------
 function updateLadder(rate) {
-  let ladder = [
+
+  const ladder = [
     { level: "Base Entry", rate: 14000 },
     { level: "Zone B Target", rate: 14400 },
     { level: "Zone C Target", rate: 14800 },
@@ -201,15 +200,24 @@ function updateLadder(rate) {
 
   let html = "";
 
-  ladder.forEach(l => {
-    let status = rate >= l.rate ? "✔ reached" : "⏳ waiting";
-    html += `${l.level}: ${l.rate} (${status})<br>`;
+  ladder.forEach(item => {
+
+    const status =
+      rate >= item.rate
+      ? "✔ reached"
+      : "⏳ waiting";
+
+    html += item.level +
+      ": " +
+      item.rate +
+      " (" +
+      status +
+      ")<br>";
   });
 
   document.getElementById("ladder").innerHTML = html;
 }
 
-// ---------------- INIT ----------------
 renderPortfolio();
 fetchRate();
 setInterval(fetchRate, 60000);
