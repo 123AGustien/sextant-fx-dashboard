@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sextant FX Dashboard</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0b0f14;
+  color: white;
+  text-align: center;
+  padding: 40px;
+}
+
+.box {
+  margin: 20px auto;
+  padding: 20px;
+  width: 320px;
+  background: #111823;
+  border-radius: 10px;
+  border: 1px solid #333;
+}
+
+.zoneA { color: #00ff99; }
+.zoneB { color: #ffd166; }
+.zoneC { color: #ff8c42; }
+.zoneD { color: #ff4d4d; }
+
+h1 { margin-bottom: 30px; }
+</style>
+</head>
+
+<body>
+
+<h1>SEXTANT FX DASHBOARD</h1>
+
+<div class="box">
+  <h2>SGD → IDR Live Rate</h2>
+  <div id="rate">Loading...</div>
+</div>
+
+<div class="box">
+  <h2>Zone Status</h2>
+  <div id="zone">--</div>
+</div>
+
+<div class="box">
+  <h2>Action</h2>
+  <div id="action">--</div>
+</div>
+
+<script>
+// ---------------- FX ZONES ----------------
+const zones = [
+  { name: "A", min: 13800, max: 14200, action: "HOLD / SMALL CONVERT 10%" },
+  { name: "B", min: 14200, max: 14600, action: "CONVERT 10–20%" },
+  { name: "C", min: 14600, max: 15000, action: "AGGRESSIVE CONVERT 20–30%" },
+  { name: "D", min: 15000, max: 999999, action: "EXIT STRATEGY" }
+];
+
+// ---------------- FETCH LIVE RATE ----------------
+async function fetchRate() {
+  try {
+    const res = await fetch("https://api.exchangerate.host/latest?base=SGD&symbols=IDR");
+    const data = await res.json();
+
+    const rate = data.rates.IDR;
+    document.getElementById("rate").innerText = rate.toFixed(2);
+
+    evaluate(rate);
+  } catch (err) {
+    document.getElementById("rate").innerText = "Error loading rate";
+  }
+}
+
+// ---------------- ZONE ENGINE ----------------
+function evaluate(rate) {
+  let zone = zones.find(z => rate >= z.min && rate < z.max);
+
+  if (!zone) return;
+
+  document.getElementById("zone").innerText = "Zone " + zone.name;
+  document.getElementById("action").innerText = zone.action;
+
+  document.getElementById("zone").className = "zone" + zone.name;
+}
+
+// ---------------- AUTO REFRESH ----------------
+fetchRate();
+setInterval(fetchRate, 60000);
+
+</script>
+
+</body>
+</html>
