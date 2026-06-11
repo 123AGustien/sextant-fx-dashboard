@@ -2,24 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sextant FX Dashboard v2</title>
+<title>Sextant FX Institutional v3</title>
 
 <style>
 body {
   font-family: Arial;
   background: #0b0f14;
-  color: white;
+  color: #fff;
   text-align: center;
-  padding: 30px;
+  padding: 25px;
 }
 
 .box {
-  margin: 15px auto;
-  padding: 15px;
-  width: 340px;
+  margin: 12px auto;
+  padding: 14px;
+  width: 360px;
   background: #111823;
-  border-radius: 10px;
   border: 1px solid #333;
+  border-radius: 10px;
 }
 
 .zoneA { color: #00ff99; }
@@ -27,67 +27,67 @@ body {
 .zoneC { color: #ff8c42; }
 .zoneD { color: #ff4d4d; }
 
-input {
-  padding: 6px;
-  width: 120px;
-  margin: 5px;
-}
+small { color: #aaa; }
+
 button {
   padding: 6px 10px;
   cursor: pointer;
 }
-canvas {
-  background: #0f1622;
-  margin-top: 10px;
-  border-radius: 6px;
+input {
+  width: 120px;
+  padding: 5px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>SEXTANT FX DASHBOARD v2</h1>
+<h1>SEXTANT FX v3 (INSTITUTIONAL)</h1>
 
 <div class="box">
-  <h2>Live Rate</h2>
+  <h2>Live SGD → IDR</h2>
   <div id="rate">Loading...</div>
+  <small>Auto refresh 60s</small>
 </div>
 
 <div class="box">
-  <h2>Zone</h2>
+  <h2>Zone Engine</h2>
   <div id="zone">--</div>
   <div id="action">--</div>
 </div>
 
 <div class="box">
-  <h2>Christine Trust Mode</h2>
-  <div id="mode">ACTIVE</div>
+  <h2>Portfolio (Christine Trust)</h2>
+  <div id="portfolio">Loading...</div>
 </div>
 
 <div class="box">
-  <h2>Ample vs Market Spread</h2>
-  <input id="ampleRate" placeholder="Ample rate">
-  <button onclick="calcSpread()">Compare</button>
-  <div id="spread">--</div>
+  <h2>Ladder Conversion Planner</h2>
+  <div id="ladder"></div>
 </div>
 
 <div class="box">
-  <h2>Mini Trend (session)</h2>
-  <canvas id="chart" width="300" height="120"></canvas>
+  <h2>Manual Allocation Update</h2>
+  <input id="sgdHeld" placeholder="SGD %" />
+  <input id="idrHeld" placeholder="IDR %" />
+  <button onclick="updatePortfolio()">Update</button>
 </div>
 
 <script>
 
-// ---------------- CONFIG ----------------
+// ---------------- ZONES ----------------
 const zones = [
   { name: "A", min: 13800, max: 14200, action: "HOLD / SMALL CONVERT 10%" },
   { name: "B", min: 14200, max: 14600, action: "CONVERT 10–20%" },
   { name: "C", min: 14600, max: 15000, action: "AGGRESSIVE CONVERT 20–30%" },
-  { name: "D", min: 15000, max: 999999, action: "EXIT STRATEGY" }
+  { name: "D", min: 15000, max: 999999, action: "EXIT REMAINING POSITION" }
 ];
 
-// session memory
-let history = [];
+// ---------------- DEFAULT PORTFOLIO ----------------
+let portfolio = JSON.parse(localStorage.getItem("fxPortfolio")) || {
+  sgd: 70,
+  idr: 30
+};
 
 // ---------------- FETCH RATE ----------------
 async function fetchRate() {
@@ -97,11 +97,8 @@ async function fetchRate() {
   const rate = data.rates.IDR;
   document.getElementById("rate").innerText = rate.toFixed(2);
 
-  history.push(rate);
-  if (history.length > 20) history.shift();
-
   evaluate(rate);
-  drawChart();
+  updateLadder(rate);
 }
 
 // ---------------- ZONE ENGINE ----------------
@@ -113,47 +110,51 @@ function evaluate(rate) {
 
   document.getElementById("zone").className = "zone" + z.name;
 
-  // alert trigger
   if (z.name === "C" || z.name === "D") {
-    console.log("⚠ FX HIGH ZONE ACTIVE");
+    console.log("⚠ Institutional Alert: High FX Zone");
   }
 }
 
-// ---------------- SPREAD TOOL ----------------
-function calcSpread() {
-  let market = parseFloat(document.getElementById("rate").innerText);
-  let ample = parseFloat(document.getElementById("ampleRate").value);
+// ---------------- PORTFOLIO ----------------
+function updatePortfolio() {
+  let sgd = parseFloat(document.getElementById("sgdHeld").value);
+  let idr = parseFloat(document.getElementById("idrHeld").value);
 
-  if (!market || !ample) return;
+  if (!isNaN(sgd)) portfolio.sgd = sgd;
+  if (!isNaN(idr)) portfolio.idr = idr;
 
-  let diff = (market - ample).toFixed(2);
-
-  document.getElementById("spread").innerText =
-    "Spread: " + diff + " IDR per SGD";
+  localStorage.setItem("fxPortfolio", JSON.stringify(portfolio));
+  renderPortfolio();
 }
 
-// ---------------- SIMPLE CHART ----------------
-function drawChart() {
-  let c = document.getElementById("chart");
-  let ctx = c.getContext("2d");
+function renderPortfolio() {
+  document.getElementById("portfolio").innerHTML =
+    `SGD: ${portfolio.sgd}%<br>IDR: ${portfolio.idr}%`;
+}
 
-  ctx.clearRect(0, 0, 300, 120);
+// ---------------- LADDER MODEL ----------------
+function updateLadder(rate) {
+  let base = 14000;
 
-  ctx.beginPath();
-  ctx.strokeStyle = "#00ff99";
+  let ladder = [
+    { level: "Base Entry", rate: 14000 },
+    { level: "Zone B Target", rate: 14400 },
+    { level: "Zone C Target", rate: 14800 },
+    { level: "Peak Scenario", rate: 15000 }
+  ];
 
-  for (let i = 0; i < history.length; i++) {
-    let x = (i / history.length) * 300;
-    let y = 120 - (history[i] - 13800) / 20;
+  let html = "";
 
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
+  ladder.forEach(l => {
+    let status = rate >= l.rate ? "✔ reached" : "⏳ waiting";
+    html += `${l.level}: ${l.rate} (${status})<br>`;
+  });
 
-  ctx.stroke();
+  document.getElementById("ladder").innerHTML = html;
 }
 
 // ---------------- INIT ----------------
+renderPortfolio();
 fetchRate();
 setInterval(fetchRate, 60000);
 
