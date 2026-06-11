@@ -2,21 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sextant FX Dashboard</title>
+<title>Sextant FX Dashboard v2</title>
 
 <style>
 body {
-  font-family: Arial, sans-serif;
+  font-family: Arial;
   background: #0b0f14;
   color: white;
   text-align: center;
-  padding: 40px;
+  padding: 30px;
 }
 
 .box {
-  margin: 20px auto;
-  padding: 20px;
-  width: 320px;
+  margin: 15px auto;
+  padding: 15px;
+  width: 340px;
   background: #111823;
   border-radius: 10px;
   border: 1px solid #333;
@@ -27,31 +27,58 @@ body {
 .zoneC { color: #ff8c42; }
 .zoneD { color: #ff4d4d; }
 
-h1 { margin-bottom: 30px; }
+input {
+  padding: 6px;
+  width: 120px;
+  margin: 5px;
+}
+button {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+canvas {
+  background: #0f1622;
+  margin-top: 10px;
+  border-radius: 6px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>SEXTANT FX DASHBOARD</h1>
+<h1>SEXTANT FX DASHBOARD v2</h1>
 
 <div class="box">
-  <h2>SGD → IDR Live Rate</h2>
+  <h2>Live Rate</h2>
   <div id="rate">Loading...</div>
 </div>
 
 <div class="box">
-  <h2>Zone Status</h2>
+  <h2>Zone</h2>
   <div id="zone">--</div>
-</div>
-
-<div class="box">
-  <h2>Action</h2>
   <div id="action">--</div>
 </div>
 
+<div class="box">
+  <h2>Christine Trust Mode</h2>
+  <div id="mode">ACTIVE</div>
+</div>
+
+<div class="box">
+  <h2>Ample vs Market Spread</h2>
+  <input id="ampleRate" placeholder="Ample rate">
+  <button onclick="calcSpread()">Compare</button>
+  <div id="spread">--</div>
+</div>
+
+<div class="box">
+  <h2>Mini Trend (session)</h2>
+  <canvas id="chart" width="300" height="120"></canvas>
+</div>
+
 <script>
-// ---------------- FX ZONES ----------------
+
+// ---------------- CONFIG ----------------
 const zones = [
   { name: "A", min: 13800, max: 14200, action: "HOLD / SMALL CONVERT 10%" },
   { name: "B", min: 14200, max: 14600, action: "CONVERT 10–20%" },
@@ -59,34 +86,74 @@ const zones = [
   { name: "D", min: 15000, max: 999999, action: "EXIT STRATEGY" }
 ];
 
-// ---------------- FETCH LIVE RATE ----------------
+// session memory
+let history = [];
+
+// ---------------- FETCH RATE ----------------
 async function fetchRate() {
-  try {
-    const res = await fetch("https://api.exchangerate.host/latest?base=SGD&symbols=IDR");
-    const data = await res.json();
+  const res = await fetch("https://api.exchangerate.host/latest?base=SGD&symbols=IDR");
+  const data = await res.json();
 
-    const rate = data.rates.IDR;
-    document.getElementById("rate").innerText = rate.toFixed(2);
+  const rate = data.rates.IDR;
+  document.getElementById("rate").innerText = rate.toFixed(2);
 
-    evaluate(rate);
-  } catch (err) {
-    document.getElementById("rate").innerText = "Error loading rate";
-  }
+  history.push(rate);
+  if (history.length > 20) history.shift();
+
+  evaluate(rate);
+  drawChart();
 }
 
 // ---------------- ZONE ENGINE ----------------
 function evaluate(rate) {
-  let zone = zones.find(z => rate >= z.min && rate < z.max);
+  let z = zones.find(x => rate >= x.min && rate < x.max);
 
-  if (!zone) return;
+  document.getElementById("zone").innerText = "Zone " + z.name;
+  document.getElementById("action").innerText = z.action;
 
-  document.getElementById("zone").innerText = "Zone " + zone.name;
-  document.getElementById("action").innerText = zone.action;
+  document.getElementById("zone").className = "zone" + z.name;
 
-  document.getElementById("zone").className = "zone" + zone.name;
+  // alert trigger
+  if (z.name === "C" || z.name === "D") {
+    console.log("⚠ FX HIGH ZONE ACTIVE");
+  }
 }
 
-// ---------------- AUTO REFRESH ----------------
+// ---------------- SPREAD TOOL ----------------
+function calcSpread() {
+  let market = parseFloat(document.getElementById("rate").innerText);
+  let ample = parseFloat(document.getElementById("ampleRate").value);
+
+  if (!market || !ample) return;
+
+  let diff = (market - ample).toFixed(2);
+
+  document.getElementById("spread").innerText =
+    "Spread: " + diff + " IDR per SGD";
+}
+
+// ---------------- SIMPLE CHART ----------------
+function drawChart() {
+  let c = document.getElementById("chart");
+  let ctx = c.getContext("2d");
+
+  ctx.clearRect(0, 0, 300, 120);
+
+  ctx.beginPath();
+  ctx.strokeStyle = "#00ff99";
+
+  for (let i = 0; i < history.length; i++) {
+    let x = (i / history.length) * 300;
+    let y = 120 - (history[i] - 13800) / 20;
+
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+
+  ctx.stroke();
+}
+
+// ---------------- INIT ----------------
 fetchRate();
 setInterval(fetchRate, 60000);
 
