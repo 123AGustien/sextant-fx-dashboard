@@ -6,71 +6,125 @@
 
 <style>
 body {
+  margin: 0;
   font-family: Arial;
   background: #0b0f14;
-  color: #fff;
-  text-align: center;
-  padding: 25px;
+  color: white;
 }
 
-.box {
-  margin: 12px auto;
-  padding: 14px;
-  width: 360px;
+/* TOP BAR */
+.topbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: #0f1622;
+  padding: 10px 20px;
+  border-bottom: 1px solid #222;
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+/* GRID */
+.container {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 15px;
+  padding: 70px 15px 15px 15px;
+}
+
+/* PANELS */
+.panel {
   background: #111823;
   border: 1px solid #333;
   border-radius: 10px;
+  padding: 15px;
 }
 
-.zoneA { color: #00ff99; }
-.zoneB { color: #ffd166; }
-.zoneC { color: #ff8c42; }
-.zoneD { color: #ff4d4d; }
+/* ZONES */
+.zoneA { color: #00ff99; font-size: 22px; }
+.zoneB { color: #ffd166; font-size: 22px; }
+.zoneC { color: #ff8c42; font-size: 22px; }
+.zoneD { color: #ff4d4d; font-size: 22px; }
 
-small { color: #aaa; }
-
-button {
-  padding: 6px 10px;
-  cursor: pointer;
+.big {
+  font-size: 28px;
+  font-weight: bold;
+  margin-top: 10px;
 }
+
+.small {
+  color: #aaa;
+  font-size: 12px;
+}
+
+/* ALERT BAR */
+.alertbar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #0f1622;
+  border-top: 1px solid #222;
+  padding: 8px;
+  font-size: 13px;
+  color: #ffd166;
+}
+
 input {
   width: 120px;
   padding: 5px;
+}
+button {
+  padding: 6px 10px;
+  cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 
-<h1>SEXTANT FX v3 (INSTITUTIONAL)</h1>
-
-<div class="box">
-  <h2>Live SGD → IDR</h2>
-  <div id="rate">Loading...</div>
-  <small>Auto refresh 60s</small>
+<!-- TOP BAR -->
+<div class="topbar">
+  <div id="rate">SGD/IDR: Loading...</div>
+  <div id="zone">Zone: --</div>
+  <div>TRUST MODE: ACTIVE</div>
 </div>
 
-<div class="box">
-  <h2>Zone Engine</h2>
-  <div id="zone">--</div>
-  <div id="action">--</div>
+<!-- MAIN GRID -->
+<div class="container">
+
+  <!-- DECISION ENGINE -->
+  <div class="panel">
+    <h2>DECISION ENGINE</h2>
+    <div id="action" class="big">--</div>
+    <div class="small">Primary FX instruction</div>
+  </div>
+
+  <!-- PORTFOLIO -->
+  <div class="panel">
+    <h2>PORTFOLIO (CHRISTINE TRUST)</h2>
+    <div id="portfolio">Loading...</div>
+  </div>
+
+  <!-- LADDER -->
+  <div class="panel">
+    <h2>LADDER STRATEGY</h2>
+    <div id="ladder"></div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="panel">
+    <h2>ALLOCATION CONTROL</h2>
+    <input id="sgdHeld" placeholder="SGD %" />
+    <input id="idrHeld" placeholder="IDR %" />
+    <button onclick="updatePortfolio()">Update</button>
+  </div>
+
 </div>
 
-<div class="box">
-  <h2>Portfolio (Christine Trust)</h2>
-  <div id="portfolio">Loading...</div>
-</div>
-
-<div class="box">
-  <h2>Ladder Conversion Planner</h2>
-  <div id="ladder"></div>
-</div>
-
-<div class="box">
-  <h2>Manual Allocation Update</h2>
-  <input id="sgdHeld" placeholder="SGD %" />
-  <input id="idrHeld" placeholder="IDR %" />
-  <button onclick="updatePortfolio()">Update</button>
+<!-- ALERT BAR -->
+<div class="alertbar" id="alert">
+SYSTEM READY
 </div>
 
 <script>
@@ -83,39 +137,17 @@ const zones = [
   { name: "D", min: 15000, max: 999999, action: "EXIT REMAINING POSITION" }
 ];
 
-// ---------------- DEFAULT PORTFOLIO ----------------
+// ---------------- PORTFOLIO ----------------
 let portfolio = JSON.parse(localStorage.getItem("fxPortfolio")) || {
   sgd: 70,
   idr: 30
 };
 
-// ---------------- FETCH RATE ----------------
-async function fetchRate() {
-  const res = await fetch("https://api.exchangerate.host/latest?base=SGD&symbols=IDR");
-  const data = await res.json();
-
-  const rate = data.rates.IDR;
-  document.getElementById("rate").innerText = rate.toFixed(2);
-
-  evaluate(rate);
-  updateLadder(rate);
+function renderPortfolio() {
+  document.getElementById("portfolio").innerHTML =
+    `SGD: ${portfolio.sgd}%<br>IDR: ${portfolio.idr}%`;
 }
 
-// ---------------- ZONE ENGINE ----------------
-function evaluate(rate) {
-  let z = zones.find(x => rate >= x.min && rate < x.max);
-
-  document.getElementById("zone").innerText = "Zone " + z.name;
-  document.getElementById("action").innerText = z.action;
-
-  document.getElementById("zone").className = "zone" + z.name;
-
-  if (z.name === "C" || z.name === "D") {
-    console.log("⚠ Institutional Alert: High FX Zone");
-  }
-}
-
-// ---------------- PORTFOLIO ----------------
 function updatePortfolio() {
   let sgd = parseFloat(document.getElementById("sgdHeld").value);
   let idr = parseFloat(document.getElementById("idrHeld").value);
@@ -127,15 +159,39 @@ function updatePortfolio() {
   renderPortfolio();
 }
 
-function renderPortfolio() {
-  document.getElementById("portfolio").innerHTML =
-    `SGD: ${portfolio.sgd}%<br>IDR: ${portfolio.idr}%`;
+// ---------------- FETCH RATE ----------------
+async function fetchRate() {
+  try {
+    const res = await fetch("https://api.exchangerate.host/latest?base=SGD&symbols=IDR");
+    const data = await res.json();
+
+    const rate = data.rates.IDR;
+    document.getElementById("rate").innerText = "SGD/IDR: " + rate.toFixed(2);
+
+    evaluate(rate);
+    updateLadder(rate);
+
+  } catch (e) {
+    document.getElementById("rate").innerText = "Rate Error";
+  }
 }
 
-// ---------------- LADDER MODEL ----------------
-function updateLadder(rate) {
-  let base = 14000;
+// ---------------- ZONE ENGINE ----------------
+function evaluate(rate) {
+  let z = zones.find(x => rate >= x.min && rate < x.max);
 
+  document.getElementById("zone").innerText = "Zone " + z.name;
+  document.getElementById("action").innerText = z.action;
+  document.getElementById("zone").className = "zone" + z.name;
+
+  document.getElementById("alert").innerText =
+    (z.name === "C" || z.name === "D")
+    ? "⚠ HIGH FX ZONE — GRADUAL CONVERSION ADVISED"
+    : "SYSTEM STABLE";
+}
+
+// ---------------- LADDER ----------------
+function updateLadder(rate) {
   let ladder = [
     { level: "Base Entry", rate: 14000 },
     { level: "Zone B Target", rate: 14400 },
