@@ -142,7 +142,6 @@ function updatePortfolio() {
 
 async function fetchRate() {
   try {
-
     const res = await fetch("https://open.er-api.com/v6/latest/SGD");
     const data = await res.json();
 
@@ -155,14 +154,11 @@ async function fetchRate() {
     updateLadder(rate);
 
   } catch (err) {
-
     document.getElementById("rate").innerText =
       "SGD/IDR: Feed Error";
 
     document.getElementById("action").innerText =
       "Awaiting Data";
-
-    console.log(err);
   }
 }
 
