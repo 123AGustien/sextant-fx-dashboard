@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sextant FX Institutional v3</title>
+<title>Sextant FX Control Room</title>
 
 <style>
 body {
@@ -24,12 +24,13 @@ body {
   display: flex;
   justify-content: space-around;
   box-sizing: border-box;
+  font-size: 14px;
 }
 
 .container {
   padding: 80px 15px 60px 15px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 15px;
 }
 
@@ -40,15 +41,15 @@ body {
   padding: 15px;
 }
 
-.zoneA { color: #00ff99; }
-.zoneB { color: #ffd166; }
-.zoneC { color: #ff8c42; }
-.zoneD { color: #ff4d4d; }
-
 .big {
   font-size: 26px;
   font-weight: bold;
 }
+
+.zoneA { color: #00ff99; }
+.zoneB { color: #ffd166; }
+.zoneC { color: #ff8c42; }
+.zoneD { color: #ff4d4d; }
 
 .alertbar {
   position: fixed;
@@ -58,20 +59,7 @@ body {
   border-top: 1px solid #222;
   padding: 10px;
   text-align: center;
-  box-sizing: border-box;
 }
-
-input {
-  width: 100px;
-  padding: 6px;
-  margin: 4px;
-}
-
-button {
-  padding: 6px 12px;
-}
-
-/* ===== FRONTEND INSTITUTIONAL ALERT LAYER ===== */
 
 @keyframes pulseRed {
   0% { background-color: #0b0f14; }
@@ -92,7 +80,6 @@ button {
 .flash {
   animation: flash 0.8s infinite;
 }
-
 </style>
 </head>
 
@@ -113,20 +100,13 @@ button {
   </div>
 
   <div class="panel">
-    <h2>PORTFOLIO (CHRISTINE TRUST)</h2>
+    <h2>PORTFOLIO</h2>
     <div id="portfolio"></div>
   </div>
 
   <div class="panel">
-    <h2>LADDER STRATEGY</h2>
+    <h2>LADDER</h2>
     <div id="ladder"></div>
-  </div>
-
-  <div class="panel">
-    <h2>ALLOCATION CONTROL</h2>
-    <input id="sgdHeld" placeholder="SGD %" />
-    <input id="idrHeld" placeholder="IDR %" />
-    <button onclick="updatePortfolio()">Update</button>
   </div>
 
 </div>
@@ -136,13 +116,6 @@ SYSTEM READY
 </div>
 
 <script>
-
-const zones = [
-  { name: "A", min: 13800, max: 14200, action: "HOLD / SMALL CONVERT 10%" },
-  { name: "B", min: 14200, max: 14600, action: "CONVERT 10–20%" },
-  { name: "C", min: 14600, max: 15000, action: "AGGRESSIVE CONVERT 20–30%" },
-  { name: "D", min: 15000, max: 999999, action: "EXIT REMAINING POSITION" }
-];
 
 let portfolio = JSON.parse(localStorage.getItem("fxPortfolio")) || {
   sgd: 70,
@@ -154,22 +127,17 @@ function renderPortfolio() {
     "SGD: " + portfolio.sgd + "%<br>IDR: " + portfolio.idr + "%";
 }
 
-function updatePortfolio() {
-  const sgd = parseFloat(document.getElementById("sgdHeld").value);
-  const idr = parseFloat(document.getElementById("idrHeld").value);
-
-  if (!isNaN(sgd)) portfolio.sgd = sgd;
-  if (!isNaN(idr)) portfolio.idr = idr;
-
-  localStorage.setItem("fxPortfolio", JSON.stringify(portfolio));
-  renderPortfolio();
-}
+const zones = [
+  { name: "A", min: 13800, max: 14200, action: "HOLD / SMALL CONVERT 10%" },
+  { name: "B", min: 14200, max: 14600, action: "CONVERT 10–20%" },
+  { name: "C", min: 14600, max: 15000, action: "AGGRESSIVE CONVERT 20–30%" },
+  { name: "D", min: 15000, max: 999999, action: "EXIT REMAINING POSITION" }
+];
 
 async function fetchRate() {
   try {
     const res = await fetch("https://open.er-api.com/v6/latest/SGD");
     const data = await res.json();
-
     const rate = data.rates.IDR;
 
     document.getElementById("rate").innerText =
@@ -178,92 +146,57 @@ async function fetchRate() {
     evaluate(rate);
     updateLadder(rate);
 
-  } catch (err) {
-    document.getElementById("rate").innerText =
-      "SGD/IDR: Feed Error";
-
-    document.getElementById("action").innerText =
-      "Awaiting Data";
+  } catch (e) {
+    document.getElementById("rate").innerText = "Feed Error";
   }
 }
 
 function evaluate(rate) {
 
-  const z = zones.find(
-    item => rate >= item.min && rate < item.max
-  );
+  const z = zones.find(x => rate >= x.min && rate < x.max);
 
   if (!z) return;
 
-  document.getElementById("zone").innerText =
-    "Zone " + z.name;
+  document.getElementById("zone").innerText = "Zone " + z.name;
 
-  document.getElementById("zone").className =
-    "zone" + z.name;
+  document.getElementById("action").innerText = z.action;
 
-  document.getElementById("action").innerText =
-    z.action;
-
-  // ALERT LOGIC
-  const risk =
+  let risk =
     rate >= 15000 ? "EXTREME" :
     rate >= 14600 ? "HIGH" :
     rate >= 14000 ? "MEDIUM" :
     "LOW";
 
+  document.getElementById("riskLevel").innerText = "RISK: " + risk;
+
   document.getElementById("alert").innerText =
-    rate >= 15000
-      ? "CRITICAL EXIT ZONE (15.0+)"
-      : rate >= 14600
-        ? "HIGH PRESSURE ZONE (14.6+)"
-        : rate >= 14000
-          ? "14.0 TRIGGER ZONE ACTIVE"
-          : "SYSTEM STABLE";
+    rate >= 15000 ? "CRITICAL EXIT ZONE" :
+    rate >= 14600 ? "HIGH PRESSURE ZONE" :
+    rate >= 14000 ? "14.0 TRIGGER ACTIVE" :
+    "SYSTEM STABLE";
 
-  document.getElementById("riskLevel").innerText =
-    "RISK: " + risk;
+  if (rate >= 14600) document.body.classList.add("alert-high");
+  else document.body.classList.remove("alert-high");
 
-  // VISUAL FX
-  if (rate >= 14600) {
-    document.body.classList.add("alert-high");
-  } else {
-    document.body.classList.remove("alert-high");
-  }
-
-  if (rate >= 14000 && rate < 14200) {
-    document.getElementById("alert").classList.add("flash");
-  } else {
-    document.getElementById("alert").classList.remove("flash");
-  }
+  const flash = document.getElementById("alert");
+  if (rate >= 14000 && rate < 14200) flash.classList.add("flash");
+  else flash.classList.remove("flash");
 }
 
 function updateLadder(rate) {
 
   const ladder = [
-    { level: "Base Entry", rate: 14000 },
-    { level: "Zone B Target", rate: 14400 },
-    { level: "Zone C Target", rate: 14800 },
-    { level: "Peak Scenario", rate: 15000 }
+    { level: "Base", rate: 14000 },
+    { level: "B Zone", rate: 14400 },
+    { level: "C Zone", rate: 14800 },
+    { level: "Peak", rate: 15000 }
   ];
 
-  let html = "";
-
-  ladder.forEach(item => {
-
-    const status =
-      rate >= item.rate
-      ? "✔ reached"
-      : "⏳ waiting";
-
-    html += item.level +
-      ": " +
-      item.rate +
-      " (" +
-      status +
-      ")<br>";
-  });
-
-  document.getElementById("ladder").innerHTML = html;
+  document.getElementById("ladder").innerHTML =
+    ladder.map(x =>
+      x.level + ": " + x.rate +
+      (rate >= x.rate ? " ✔" : " ⏳")
+    ).join("<br>");
 }
 
 renderPortfolio();
