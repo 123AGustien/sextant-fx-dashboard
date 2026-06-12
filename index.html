@@ -11,6 +11,7 @@ body {
   font-family: Arial, sans-serif;
   background: #0b0f14;
   color: #fff;
+  transition: 0.4s ease;
 }
 
 .topbar {
@@ -69,6 +70,29 @@ input {
 button {
   padding: 6px 12px;
 }
+
+/* ===== FRONTEND INSTITUTIONAL ALERT LAYER ===== */
+
+@keyframes pulseRed {
+  0% { background-color: #0b0f14; }
+  50% { background-color: #2a0d0d; }
+  100% { background-color: #0b0f14; }
+}
+
+@keyframes flash {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+.alert-high {
+  animation: pulseRed 1.5s infinite;
+}
+
+.flash {
+  animation: flash 0.8s infinite;
+}
+
 </style>
 </head>
 
@@ -77,6 +101,7 @@ button {
 <div class="topbar">
   <div id="rate">SGD/IDR: Loading...</div>
   <div id="zone">Zone: --</div>
+  <div id="riskLevel">RISK: LOW</div>
   <div>TRUST MODE: ACTIVE</div>
 </div>
 
@@ -179,10 +204,37 @@ function evaluate(rate) {
   document.getElementById("action").innerText =
     z.action;
 
+  // ALERT LOGIC
+  const risk =
+    rate >= 15000 ? "EXTREME" :
+    rate >= 14600 ? "HIGH" :
+    rate >= 14000 ? "MEDIUM" :
+    "LOW";
+
   document.getElementById("alert").innerText =
-    (z.name === "C" || z.name === "D")
-    ? "HIGH FX ZONE ACTIVE"
-    : "SYSTEM STABLE";
+    rate >= 15000
+      ? "CRITICAL EXIT ZONE (15.0+)"
+      : rate >= 14600
+        ? "HIGH PRESSURE ZONE (14.6+)"
+        : rate >= 14000
+          ? "14.0 TRIGGER ZONE ACTIVE"
+          : "SYSTEM STABLE";
+
+  document.getElementById("riskLevel").innerText =
+    "RISK: " + risk;
+
+  // VISUAL FX
+  if (rate >= 14600) {
+    document.body.classList.add("alert-high");
+  } else {
+    document.body.classList.remove("alert-high");
+  }
+
+  if (rate >= 14000 && rate < 14200) {
+    document.getElementById("alert").classList.add("flash");
+  } else {
+    document.getElementById("alert").classList.remove("flash");
+  }
 }
 
 function updateLadder(rate) {
