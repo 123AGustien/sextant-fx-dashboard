@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sextant FX Simulator</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#111;
+    color:#fff;
+    max-width:900px;
+    margin:auto;
+    padding:20px;
+}
+
+.card{
+    border:1px solid #444;
+    padding:20px;
+    margin-top:20px;
+    border-radius:10px;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+}
+
+button{
+    margin-top:15px;
+    padding:10px 20px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Sextant FX Simulator</h1>
+
+<div class="card">
+
+<h3>Simulation Inputs</h3>
+
+<label>SGD Amount</label>
+<input id="sgd" value="7000">
+
+<label>Current Rate</label>
+<input id="currentRate" value="13917">
+
+<label>Target Rate</label>
+<input id="targetRate" value="14000">
+
+<button onclick="runSimulation()">Run Simulation</button>
+
+</div>
+
+<div class="card">
+
+<h3>Results</h3>
+
+<p id="result">Waiting...</p>
+
+</div>
+
+<script>
+function runSimulation(){
+
+const sgd =
+parseFloat(document.getElementById("sgd").value);
+
+const current =
+parseFloat(document.getElementById("currentRate").value);
+
+const target =
+parseFloat(document.getElementById("targetRate").value);
+
+const currentValue = sgd * current;
+const targetValue = sgd * target;
+const difference = targetValue - currentValue;
+
+document.getElementById("result").innerHTML =
+`
+Current Value: Rp ${currentValue.toLocaleString()}<br><br>
+
+Target Value: Rp ${targetValue.toLocaleString()}<br><br>
+
+Difference: Rp ${difference.toLocaleString()}
+`;
+}
+</script>
+
+</body>
+</html>
